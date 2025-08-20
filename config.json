@@ -1,0 +1,75 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 5000,
+    "debug": false,
+    "threaded": true
+  },
+  "networking": {
+    "interface": "lo",
+    "mtu": 1500,
+    "buffer_size": 4096,
+    "timeout": 30.0,
+    "max_connections": 100
+  },
+  "tcp": {
+    "window_size": 65535,
+    "max_segment_size": 1460,
+    "initial_timeout": 1.0,
+    "max_retries": 3,
+    "keep_alive": true,
+    "keep_alive_interval": 60.0
+  },
+  "udp": {
+    "buffer_size": 8192,
+    "max_packet_size": 65507
+  },
+  "routing": {
+    "default_metric": 1,
+    "max_hops": 64,
+    "route_timeout": 300.0,
+    "enable_icmp_redirects": true
+  },
+  "simulation": {
+    "enable_demo_traffic": true,
+    "traffic_interval": [0.5, 3.0],
+    "burst_probability": 0.1,
+    "error_rate": 0.01,
+    "enable_packet_loss": false,
+    "packet_loss_rate": 0.001
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    "enable_file_logging": false,
+    "log_file": "tcp_ip_stack.log",
+    "max_log_size": 10485760,
+    "backup_count": 5
+  },
+  "monitoring": {
+    "enable_statistics": true,
+    "stats_interval": 5.0,
+    "enable_performance_monitoring": true,
+    "memory_monitoring": true
+  },
+  "security": {
+    "enable_firewall": false,
+    "allowed_ips": [],
+    "blocked_ips": [],
+    "rate_limiting": false,
+    "max_requests_per_minute": 1000
+  },
+  "web_interface": {
+    "enable_cors": true,
+    "cors_origins": ["*"],
+    "session_timeout": 3600,
+    "max_upload_size": 16777216,
+    "enable_authentication": false
+  },
+  "examples": {
+    "default_server_port": 8080,
+    "default_client_timeout": 5.0,
+    "enable_interactive_mode": true,
+    "demo_message_interval": 2.0
+  }
+}
