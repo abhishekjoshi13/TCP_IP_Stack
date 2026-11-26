@@ -90,46 +90,73 @@ void process_arp(const uint8_t* packet, size_t length) {
     }
 }
 
+
 void process_ip(const uint8_t* packet, size_t length) {
-    if (length < sizeof(struct ip_header)) {
+    if (packet == NULL || length < sizeof(struct ip_header)) {
         return;
     }
 
-    struct ip_header* ip = (struct ip_header*)packet;
-    
-    if ((ip->version_ihl >> 4) != 4) {
+    const struct ip_header* ip = (const struct ip_header*)packet;
+
+    uint8_t version = ip->version_ihl >> 4;
+    size_t hdr_len = (size_t)(ip->version_ihl & 0x0F) * 4;
+
+    if (version != 4) {
         return;
     }
 
-    uint16_t saved_checksum = ip->checksum;
-    ip->checksum = 0;
-    uint16_t calc_checksum = calculate_checksum(ip, (ip->version_ihl & 0x0F) * 4);
-    ip->checksum = saved_checksum;
+    if (hdr_len < sizeof(struct ip_header) || hdr_len > 60) {
+        return;
+    }
 
-    if (saved_checksum != calc_checksum) {
+    if (hdr_len > length) {
+        return;
+    }
+
+    size_t total_len = ntohs(ip->total_len);
+
+    if (total_len < hdr_len || total_len > length) {
+        return;
+    }
+
+    uint16_t header_words[30] = {0};
+
+    memcpy(header_words, packet, hdr_len);
+
+    uint8_t* header_bytes = (uint8_t*)header_words;
+    header_bytes[10] = 0;
+    header_bytes[11] = 0;
+
+    uint16_t calculated_checksum =
+        calculate_checksum(header_words, hdr_len);
+
+    if (ip->checksum != calculated_checksum) {
         return;
     }
 
     uint32_t dst_ip = ntohl(ip->dst_ip);
+
     if (dst_ip != local_ip) {
         return;
     }
 
-    size_t hdr_len = (ip->version_ihl & 0x0F) * 4;
     const uint8_t* payload = packet + hdr_len;
-    size_t payload_len = ntohs(ip->total_len) - hdr_len;
+    size_t payload_len = total_len - hdr_len;
 
     switch (ip->protocol) {
         case IP_PROTOCOL_ICMP:
             process_icmp(payload, payload_len, ntohl(ip->src_ip));
             break;
+
         case IP_PROTOCOL_TCP:
             process_tcp(payload, payload_len, ntohl(ip->src_ip));
             break;
+
         default:
             break;
     }
 }
+
 
 void process_icmp(const uint8_t* packet, size_t length, uint32_t src_ip) {
     if (length < sizeof(struct icmp_header)) {
