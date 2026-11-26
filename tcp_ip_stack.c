@@ -205,64 +205,57 @@ void process_icmp(const uint8_t* packet, size_t length, uint32_t src_ip) {
     }
 }
 
+
 void process_tcp(const uint8_t* packet, size_t length, uint32_t src_ip) {
-    if (length < sizeof(struct tcp_header)) {
+    if (packet == NULL || length < sizeof(struct tcp_header)) {
         return;
     }
 
-    struct tcp_header* tcp = (struct tcp_header*)packet;
-    size_t hdr_len = (tcp->data_offset >> 4) * 4;
-    
-    if (hdr_len < sizeof(struct tcp_header)) {
+    const struct tcp_header* tcp = (const struct tcp_header*)packet;
+
+    size_t hdr_len = (size_t)(tcp->data_offset >> 4) * 4;
+
+    if (hdr_len < sizeof(struct tcp_header) || hdr_len > 60) {
+        return;
+    }
+
+    if (hdr_len > length) {
         return;
     }
 
     const uint8_t* payload = packet + hdr_len;
     size_t payload_len = length - hdr_len;
 
+    uint16_t src_port = ntohs(tcp->src_port);
     uint16_t dst_port = ntohs(tcp->dst_port);
-    printf("TCP packet: %d -> %d, flags=0x%02x", ntohs(tcp->src_port), dst_port, tcp->flags);
+
+    printf("TCP packet: %u -> %u, flags=0x%02x",
+           (unsigned int)src_port,
+           (unsigned int)dst_port,
+           tcp->flags);
 
     if (payload_len > 0) {
-        printf(", data: %.*s", (int)payload_len > 20 ? 20 : (int)payload_len, payload);
-    }
-    printf("\n");
+        size_t display_len = payload_len > 20 ? 20 : payload_len;
 
-    if (tcp->flags & TCP_SYN) {
-        printf("TCP connection attempt on port %d\n", dst_port);
-    }
-}
+        printf(", data: ");
 
-uint16_t calculate_checksum(const void* data, size_t length) {
-    const uint16_t* words = (const uint16_t*)data;
-    size_t nwords = (length + 1) / 2;
-    uint32_t sum = 0;
+        for (size_t i = 0; i < display_len; i++) {
+            printf("%02x", payload[i]);
 
-    for (size_t i = 0; i < nwords; i++) {
-        sum += ntohs(words[i]);
-    }
-
-    while (sum >> 16) {
-        sum = (sum & 0xFFFF) + (sum >> 16);
-    }
-
-    return htons(~sum);
-}
-
-uint32_t parse_ipv4(const char* ip_str) {
-    uint32_t ip = 0;
-    int parts[4];
-
-    if (sscanf(ip_str, "%d.%d.%d.%d", &parts[0], &parts[1], &parts[2], &parts[3]) == 4) {
-        for (int i = 0; i < 4; i++) {
-            if (parts[i] < 0 || parts[i] > 255) {
-                return 0;
+            if (i + 1 < display_len) {
+                printf(" ");
             }
-            ip = (ip << 8) | parts[i];
         }
     }
 
-    return ip;
+    printf("\n");
+
+    if (tcp->flags & TCP_SYN) {
+        printf("TCP connection attempt on port %u\n",
+               (unsigned int)dst_port);
+    }
+
+    (void)src_ip;
 }
 
 void print_mac(const uint8_t* mac) {
