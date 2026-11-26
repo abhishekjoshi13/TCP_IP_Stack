@@ -1,3 +1,4 @@
+
 #ifndef TCP_IP_STACK_H
 #define TCP_IP_STACK_H
 
@@ -8,7 +9,8 @@
 #ifdef _WIN32
     #include <winsock2.h>
     #include <ws2tcpip.h>
-    #define PACKED_STRUCT __pragma(pack(push, 1)) struct __pragma(pack(pop))
+    #define PACKED_STRUCT struct
+    #pragma pack(push, 1)
 #else
     #include <arpa/inet.h>
     #define PACKED_STRUCT struct __attribute__((packed))
@@ -16,23 +18,32 @@
 
 #define ETH_ALEN 6
 #define IP_ALEN 4
+
 #define MAX_ARP_ENTRIES 16
 #define TCP_MAX_PORTS 1024
 
 #define ETHERTYPE_IP  0x0800
 #define ETHERTYPE_ARP 0x0806
+
 #define ARP_OP_REQUEST 1
 #define ARP_OP_REPLY   2
+
 #define IP_PROTOCOL_ICMP 1
 #define IP_PROTOCOL_TCP  6
+
 #define ICMP_TYPE_ECHO_REPLY   0
 #define ICMP_TYPE_ECHO_REQUEST 8
+
 #define TCP_FIN 0x01
 #define TCP_SYN 0x02
 #define TCP_RST 0x04
 #define TCP_PSH 0x08
 #define TCP_ACK 0x10
 #define TCP_URG 0x20
+
+#define IPV4_MIN_HEADER_SIZE 20
+#define IPV4_MAX_HEADER_SIZE 60
+#define IPV4_MAX_PACKET_SIZE 65535
 
 PACKED_STRUCT eth_header {
     uint8_t dst_mac[ETH_ALEN];
@@ -85,6 +96,10 @@ PACKED_STRUCT tcp_header {
     uint16_t urgent;
 };
 
+#ifdef _WIN32
+    #pragma pack(pop)
+#endif
+
 typedef struct {
     uint32_t ip;
     uint8_t mac[ETH_ALEN];
@@ -100,20 +115,61 @@ typedef struct {
 
 extern uint8_t local_mac[ETH_ALEN];
 extern uint32_t local_ip;
+
 extern arp_entry arp_table[MAX_ARP_ENTRIES];
 extern tcp_connection tcp_connections[TCP_MAX_PORTS];
+extern int arp_count;
 
 void network_init(const char* ip_str);
-void process_frame(const uint8_t* frame, size_t length);
-void process_arp(const uint8_t* packet, size_t length);
-void process_ip(const uint8_t* packet, size_t length);
-void process_icmp(const uint8_t* packet, size_t length, uint32_t src_ip);
-void process_tcp(const uint8_t* packet, size_t length, uint32_t src_ip);
 
-uint16_t calculate_checksum(const void* data, size_t length);
-uint32_t parse_ipv4(const char* ip_str);
-void print_mac(const uint8_t* mac);
-void print_ip(uint32_t ip);
-bool add_arp_entry(uint32_t ip, const uint8_t* mac);
+void process_frame(
+    const uint8_t* frame,
+    size_t length
+);
+
+void process_arp(
+    const uint8_t* packet,
+    size_t length
+);
+
+void process_ip(
+    const uint8_t* packet,
+    size_t length
+);
+
+void process_icmp(
+    const uint8_t* packet,
+    size_t length,
+    uint32_t src_ip
+);
+
+void process_tcp(
+    const uint8_t* packet,
+    size_t length,
+    uint32_t src_ip
+);
+
+uint16_t calculate_checksum(
+    const void* data,
+    size_t length
+);
+
+uint32_t parse_ipv4(
+    const char* ip_str
+);
+
+void print_mac(
+    const uint8_t* mac
+);
+
+void print_ip(
+    uint32_t ip
+);
+
+bool add_arp_entry(
+    uint32_t ip,
+    const uint8_t* mac
+);
 
 #endif
+
