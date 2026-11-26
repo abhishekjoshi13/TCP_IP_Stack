@@ -1,407 +1,210 @@
+
 # TCP/IP Stack Testing Guide
 
-This guide explains how to test and validate all features of the TCP/IP stack implementation. It provides comprehensive testing scenarios for each protocol layer and practical examples for demonstration.
+This guide explains how to build and test the educational
+TCP/IP stack implemented in C.
 
-## Quick Start Testing
+The project processes sample packets in memory. It does not
+send packets over a real network interface.
 
-### 1. Basic Functionality Test
+## 1. Requirements
 
-```bash
-# Start the web interface
-python main.py --mode web
+You need:
 
-# Open browser to http://localhost:5000
-# Click "Start Stack" button
-# Verify statistics are updating
-```
+- GCC or a compatible C compiler
+- GNU Make
+- C99 support
 
-### 2. Command Line Testing
+For sanitizer testing, your compiler must also support
+AddressSanitizer and UndefinedBehaviorSanitizer.
 
-```bash
-# Test ping functionality
-python main.py --mode cli --ping 127.0.0.1 --count 5
+## 2. Build the Project
 
-# Show routing table
-python main.py --mode cli --routes
-
-# Display stack statistics
-python main.py --mode cli --stats
-```
-
-### 3. Demo Mode
+From the repository directory, run:
 
 ```bash
-# Run automated demonstration
-python main.py --mode demo
-
-# This will show all networking features working together
+make
 ```
 
-## Layer-by-Layer Testing
+This compiles:
 
-### Physical Layer Testing
+- `main.c`
+- `tcp_ip_stack.c`
 
-The physical layer handles the lowest level of network communication:
+The resulting executable is:
+
+```text
+tcp_ip_stack
+```
+
+## 3. Run the Demonstration
+
+Run:
 
 ```bash
-# Test different interfaces
-python main.py --interface lo    # Loopback (default)
-python main.py --interface eth0  # Ethernet (if available)
-
-# Monitor physical layer statistics
-# Check for simulation mode activation
+make run
 ```
 
-**What to verify:**
-- Stack starts successfully in simulation mode
-- Physical layer statistics show frame transmission
-- No socket permission errors in simulation mode
+The program initializes the stack with:
 
-### Data Link Layer Testing
+```text
+192.168.1.1
+```
 
-Tests Ethernet frame handling and MAC address management:
+It then executes the built-in parser and checksum tests
+and submits sample Ethernet frames to the packet processor.
+
+## 4. Run the Built-in Tests
+
+Run:
 
 ```bash
-# Run packet sniffer to see frame details
-python examples/packet_sniffer.py --show-data --duration 30
-
-# Look for Ethernet frame information
-# Verify MAC address resolution
+make test
 ```
 
-**What to verify:**
-- Ethernet frames show correct MAC addresses
-- Frame check sequences are calculated
-- ARP table is populated with local entries
+### IPv4 Parser Tests
 
-### Network Layer Testing
+The current test program checks:
 
-Tests IP packet routing and ICMP functionality:
+| Input | Expected result |
+|---|---|
+| `192.168.1.1` | Valid |
+| `127.0.0.1` | Valid |
+| `192.168.1.256` | Rejected |
+| `192.168.1` | Rejected |
+| `192.168.1.1abc` | Rejected |
+| Null input | Rejected |
+
+These cases use explicit pass/fail assertions.
+
+### Checksum Tests
+
+The checksum tests cover:
+
+- Odd-length input.
+- Validation of a packet containing its calculated checksum.
+- Null input.
+- Empty input.
+
+These cases also use explicit pass/fail assertions.
+
+## 5. Packet Processing Demonstrations
+
+The program constructs and submits sample packets.
+
+### ARP
+
+A sample ARP request is constructed with:
+
+- Ethernet frame header.
+- Ethernet/IPv4 ARP header.
+- Sender MAC and sender IP.
+- Local destination IP.
+
+The packet is submitted to `process_frame()`.
+
+### ICMP
+
+A sample IPv4 packet containing an ICMP echo request is
+constructed.
+
+The demonstration exercises:
+
+- IPv4 header validation.
+- IPv4 checksum verification.
+- ICMP checksum verification.
+- ICMP echo-request processing.
+- Echo-reply preparation.
+
+The reply is prepared in memory and is not transmitted.
+
+### TCP
+
+A sample IPv4 packet containing a TCP header and payload
+is constructed.
+
+The demonstration exercises:
+
+- IPv4 validation.
+- TCP minimum-header validation.
+- TCP data-offset validation.
+- Port and flag extraction.
+- Payload display.
+
+It does not establish a real TCP connection.
+
+## 6. Malformed Packet Demonstrations
+
+The program also submits malformed inputs.
+
+Current examples include:
+
+- An Ethernet frame shorter than the Ethernet header.
+- A null Ethernet frame pointer.
+- An IPv4 packet whose total length is smaller than its header.
+- An IPv4 packet whose total length exceeds the received data.
+- An IPv4 packet with an invalid header length.
+
+These are currently smoke tests. They submit the malformed
+packets and allow the packet processor to handle them, but
+they do not yet contain individual automated pass/fail
+assertions for every rejection case.
+
+## 7. Sanitizer Testing
+
+Run:
 
 ```bash
-# Test ping (ICMP) functionality
-python main.py --mode cli --ping 127.0.0.1
-python main.py --mode cli --ping 10.0.0.1
-
-# Test routing table management
-python main.py --mode cli --routes
-
-# Add custom route (via web interface)
-# Destination: 192.168.100.0/24
-# Gateway: 192.168.1.1
-# Interface: eth0
+make sanitize
 ```
 
-**What to verify:**
-- Ping responses show realistic round-trip times
-- Routing table displays default routes
-- Custom routes can be added and removed
-- IP packet statistics increment properly
+This builds the program with:
 
-### Transport Layer Testing
+- AddressSanitizer
+- UndefinedBehaviorSanitizer
 
-Tests TCP reliable connections and UDP fast delivery:
+These tools can help identify memory errors and certain
+forms of undefined behavior during execution.
 
-#### TCP Testing
+If your compiler does not support these sanitizers, use
+the normal build and test commands instead.
+
+## 8. Clean Generated Files
+
+Run:
 
 ```bash
-# Start TCP server
-python examples/tcp_server.py --port 8080 --type echo
-
-# In another terminal, test with client
-python examples/tcp_client.py --connect 127.0.0.1 8080 --message "Hello TCP!"
-
-# Test interactive client
-python examples/tcp_client.py --interactive
+make clean
 ```
 
-**What to verify:**
-- TCP connections establish successfully
-- Messages are delivered reliably
-- Connection state changes are logged
-- Server handles multiple client simulation
+This removes the generated executable and sanitizer executable.
 
-#### UDP Testing
+## 9. Interpreting Test Results
 
-```bash
-# Test UDP functionality through examples
-python examples/udp_server.py --port 7777
-python examples/udp_client.py --connect 127.0.0.1 7777 --message "Hello UDP!"
-```
+The current test summary reports the number of explicit
+assertions passed and failed.
 
-**What to verify:**
-- UDP packets are sent without connection setup
-- Fast delivery without reliability guarantees
-- Port management works correctly
+A successful assertion count does not mean that every
+protocol behavior has been fully verified.
 
-### Application Layer Testing
+In particular, ARP, ICMP, TCP, and malformed packet
+demonstrations need more dedicated assertions before
+they can be considered comprehensive automated tests.
 
-Tests HTTP and custom application protocols:
+## 10. Scope of This Project
 
-#### HTTP Server Testing
+The implementation is an educational packet-processing
+simulation.
 
-```bash
-# Start HTTP server
-python examples/tcp_server.py --port 8080 --type http
+It currently does not provide:
 
-# Test with curl or browser
-curl http://localhost:8080/
-curl http://localhost:8080/status
-```
+- Real network-interface communication.
+- Real packet transmission.
+- IPv4 fragment reassembly.
+- TCP checksum verification.
+- A complete TCP connection state machine.
+- UDP processing.
+- HTTP or web-server functionality.
 
-**What to verify:**
-- HTTP responses are properly formatted
-- Different paths return appropriate content
-- Server handles multiple requests
-
-#### Web Interface Testing
-
-```bash
-# Start web interface
-python main.py --mode web --port 5000
-
-# Test all dashboard features:
-# 1. Start/Stop stack
-# 2. View real-time statistics
-# 3. Add/remove routes
-# 4. Run ping tests
-# 5. Monitor packet capture
-```
-
-**What to verify:**
-- All dashboard tabs load correctly
-- Real-time statistics update
-- Interactive features work (ping, routing)
-- Packet capture shows realistic traffic
-
-## Advanced Testing Scenarios
-
-### 1. Stress Testing
-
-```bash
-# Generate high traffic load
-python -c "
-import time
-from tcp_ip_stack import TCPIPStack
-
-stack = TCPIPStack()
-stack.start()
-
-# Generate many packets rapidly
-for i in range(1000):
-    stack.send_packet(b'test data', '127.0.0.1')
-    if i % 100 == 0:
-        print(f'Sent {i} packets')
-
-stack.stop()
-"
-```
-
-### 2. Error Condition Testing
-
-```bash
-# Test invalid IP addresses
-python main.py --mode cli --ping 999.999.999.999
-
-# Test non-existent routes
-# Try adding invalid routes through web interface
-
-# Test connection limits
-# Start many TCP connections simultaneously
-```
-
-### 3. Performance Testing
-
-```bash
-# Measure packet processing speed
-python -c "
-import time
-from tcp_ip_stack import TCPIPStack
-
-stack = TCPIPStack()
-stack.start()
-
-start_time = time.time()
-packet_count = 10000
-
-for i in range(packet_count):
-    stack.send_packet(b'performance test', '127.0.0.1')
-
-duration = time.time() - start_time
-print(f'Processed {packet_count} packets in {duration:.2f} seconds')
-print(f'Rate: {packet_count/duration:.0f} packets/second')
-
-stack.stop()
-"
-```
-
-## Integration Testing
-
-### 1. Multi-Component Test
-
-```bash
-# Terminal 1: Start server
-python examples/tcp_server.py --port 8080
-
-# Terminal 2: Start packet capture  
-python examples/packet_sniffer.py --protocol TCP --port 8080
-
-# Terminal 3: Send client requests
-python examples/tcp_client.py --connect 127.0.0.1 8080 --message "Integration test"
-
-# Terminal 4: Monitor via web interface
-python main.py --mode web
-```
-
-### 2. Protocol Interaction Test
-
-```bash
-# Test all protocols together
-python main.py --mode demo
-
-# Verify in logs:
-# - HTTP requests and responses
-# - SSH connection simulation  
-# - DNS query simulation
-# - ICMP ping messages
-# - TCP connection management
-```
-
-## Testing Checklist
-
-### Basic Functionality ✓
-- [ ] Stack starts without errors
-- [ ] Web interface loads correctly
-- [ ] Statistics update in real-time
-- [ ] Demo traffic generates realistic patterns
-
-### Network Layer ✓
-- [ ] Ping functionality works
-- [ ] Routing table displays correctly
-- [ ] Routes can be added/removed
-- [ ] IP packet processing
-
-### Transport Layer ✓
-- [ ] TCP connections establish
-- [ ] UDP packets transmit
-- [ ] Port management works
-- [ ] Connection state tracking
-
-### Application Layer ✓
-- [ ] HTTP server responds correctly
-- [ ] Custom protocols work
-- [ ] Web dashboard fully functional
-- [ ] API endpoints respond
-
-### Performance ✓
-- [ ] No memory leaks during long runs
-- [ ] Reasonable packet processing speed
-- [ ] Graceful error handling
-- [ ] Clean startup and shutdown
-
-### Examples ✓
-- [ ] All example scripts run successfully
-- [ ] Interactive modes work
-- [ ] Packet capture shows detailed info
-- [ ] Server/client communication
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Permission Errors**
-   ```
-   Solution: The stack automatically falls back to simulation mode
-   This is normal and expected behavior
-   ```
-
-2. **Port Already in Use**
-   ```bash
-   # Use different port
-   python main.py --mode web --port 5001
-   ```
-
-3. **No Statistics Updating**
-   ```
-   Solution: Click "Start Stack" in web interface
-   Check console logs for errors
-   ```
-
-4. **Import Errors**
-   ```bash
-   # Ensure you're in project directory
-   cd tcp-ip-stack
-   python main.py
-   ```
-
-### Debug Mode
-
-```bash
-# Enable detailed logging
-python main.py --mode web --log-level DEBUG
-
-# Check stack status
-python main.py --mode cli --stats
-```
-
-### Performance Monitoring
-
-```bash
-# Monitor resource usage
-python -c "
-import psutil, time
-from tcp_ip_stack import TCPIPStack
-
-stack = TCPIPStack()
-stack.start()
-
-for i in range(10):
-    process = psutil.Process()
-    print(f'Memory: {process.memory_info().rss / 1024 / 1024:.1f} MB')
-    print(f'CPU: {process.cpu_percent():.1f}%')
-    time.sleep(5)
-
-stack.stop()
-"
-```
-
-## Test Results Documentation
-
-When testing, document results in this format:
-
-```
-Test: [Test Name]
-Date: [Date]
-Environment: [OS, Python version]
-Result: [PASS/FAIL]
-Notes: [Any observations]
-Performance: [Speed/memory measurements if applicable]
-```
-
-Example:
-```
-Test: Basic TCP Connection
-Date: 2024-12-20
-Environment: Ubuntu 20.04, Python 3.8.10
-Result: PASS
-Notes: Connection established successfully, data transmitted correctly
-Performance: 1000 packets/second average
-```
-
-## Automated Testing
-
-For continuous integration, use:
-
-```bash
-# Run basic functionality tests
-python -m pytest tests/ -v
-
-# Run specific test categories
-python -m pytest tests/test_transport.py -v
-python -m pytest tests/test_network.py -v
-
-# Run with coverage
-python -m pytest tests/ --cov=tcp_ip_stack --cov-report=html
-```
-
-This testing guide ensures comprehensive validation of all TCP/IP stack features and provides confidence in the implementation's correctness and performance.
+Testing should therefore focus on the implemented packet
+parsing, validation, checksum, and demonstration behavior.
