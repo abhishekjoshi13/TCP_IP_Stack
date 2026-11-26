@@ -1,86 +1,66 @@
-# TCP/IP Stack Implementation
+# Custom TCP/IP Stack in C
 
-A lightweight, educational implementation of a TCP/IP network stack in C.
+A lightweight, educational implementation of selected Ethernet,
+ARP, IPv4, ICMP, and TCP packet-processing functionality in C.
+
+The project focuses on understanding how network packets are
+structured, validated, and dispatched across protocol layers.
+
+This is an in-memory packet-processing simulation. It does not
+implement a complete operating-system network stack and does not
+send or receive real network traffic through a network interface.
 
 ## Features
 
-- Ethernet frame processing
-- ARP protocol implementation  
-- IP packet handling
-- ICMP support (ping replies)
-- Basic TCP processing
+### Ethernet
+- Parses Ethernet frame headers.
+- Identifies ARP and IPv4 frames.
+- Filters frames using the configured local MAC address and
+  broadcast destination address.
+- Uses packed structures for protocol header layouts.
 
-## Building
+### ARP
+- Parses Ethernet/IPv4 ARP messages.
+- Validates hardware type, protocol type, address lengths,
+  opcode, and sender MAC address.
+- Maintains a basic IP-to-MAC ARP cache.
+- Prepares an ARP reply for requests targeting the local IP.
 
-```bash
-make
-Running
-./tcp_ip_stack
-Project Structure
-main.c - Main application and test simulation
+### IPv4
+- Validates IPv4 version and header length.
+- Checks that the total packet length is consistent with the
+  received frame length.
+- Verifies the IPv4 header checksum.
+- Checks destination IP address and TTL.
+- Rejects fragmented IPv4 packets. Fragment reassembly is not
+  implemented.
+- Dispatches supported packets to ICMP and TCP handlers.
 
-tcp_ip_stack.h - Protocol definitions
+### ICMP
+- Validates ICMP packet length and checksum.
+- Handles ICMP echo requests.
+- Prepares an ICMP echo reply packet in memory.
 
-tcp_ip_stack.c - Core implementation
+### TCP
+- Validates the minimum TCP header size.
+- Validates the TCP data offset and header length.
+- Extracts source and destination ports, flags, and payload.
+- Displays a limited portion of the payload in hexadecimal form.
 
-Makefile - Build configuration
-🔧 Protocol Implementation Details
-Ethernet Layer (tcp_ip_stack.h)
-MAC address filtering and validation
+### Utility Functions
+- Calculates Internet checksums using byte-based processing.
+- Handles odd-length checksum input.
+- Parses dotted-decimal IPv4 addresses with strict input validation.
+- Validates basic MAC address properties.
 
-Support for ARP (0x0806) and IP (0x0800) protocol types
+## Project Structure
 
-Frame structure parsing using packed structures
-
-ARP Protocol (tcp_ip_stack.c)
-Handles ARP requests and replies
-
-Maintains local ARP table for IP-to-MAC mapping
-
-Responds to ARP queries for the local IP address
-
-IP Layer (tcp_ip_stack.c)
-IPv4 packet parsing and validation
-
-Header checksum verification using RFC-compliant algorithm
-
-Protocol demultiplexing (ICMP, TCP)
-
-TTL and fragmentation handling
-
-ICMP Protocol (tcp_ip_stack.c)
-Processes ICMP echo requests (ping)
-
-Generates appropriate echo replies with correct checksums
-
-Validates incoming ICMP packets
-
-TCP Protocol (tcp_ip_stack.c)
-Basic TCP header parsing with proper byte ordering
-
-Port number handling and flag interpretation
-
-Payload extraction and display
-
-SYN flag detection for connection attempts
-
-🧪 Testing
-The implementation includes comprehensive test cases that simulate:
-
-ARP Requests: Tests address resolution protocol handling
-
-ICMP Echo Requests: Validates ping response capability
-
-TCP Packets: Tests TCP header parsing and data extraction
-References
-RFC 791 - Internet Protocol (IP)
-
-RFC 792 - Internet Control Message Protocol (ICMP)
-
-RFC 793 - Transmission Control Protocol (TCP)
-
-RFC 826 - Ethernet Address Resolution Protocol (ARP)
-
-"TCP/IP Illustrated, Volume 1" by W. Richard Stevens
-
-Various networking and protocol documentation
+```text
+TCP_IP_Stack/
+├── .gitignore
+├── Makefile
+├── README.md
+├── TESTING_GUIDE.md
+├── main.c
+├── tcp_ip_stack.c
+└── tcp_ip_stack.h
