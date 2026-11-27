@@ -71,7 +71,7 @@ int main(int argc, char* argv[]) {
     const char* local_address = "192.168.1.1";
 
     if (argc > 2) {
-        fprintf(stderr, "Usage: packet_cli [local_ipv4]\\n");
+        fprintf(stderr, "Usage: packet_cli [local_ipv4]\n");
         return 1;
     }
 
@@ -80,27 +80,27 @@ int main(int argc, char* argv[]) {
     }
 
     if (parse_ipv4(local_address) == 0) {
-        fprintf(stderr, "Invalid local IPv4 address.\\n");
+        fprintf(stderr, "Invalid local IPv4 address.\n");
         return 1;
     }
 
     char* input = malloc(MAX_INPUT_SIZE);
 
     if (input == NULL) {
-        fprintf(stderr, "Unable to allocate input buffer.\\n");
+        fprintf(stderr, "Unable to allocate input buffer.\n");
         return 1;
     }
 
     unsigned char* frame = malloc(MAX_FRAME_SIZE);
 
     if (frame == NULL) {
-        fprintf(stderr, "Unable to allocate packet buffer.\\n");
+        fprintf(stderr, "Unable to allocate packet buffer.\n");
         free(input);
         return 1;
     }
 
     if (fgets(input, MAX_INPUT_SIZE, stdin) == NULL) {
-        fprintf(stderr, "No packet input received.\\n");
+        fprintf(stderr, "No packet input received.\n");
         free(frame);
         free(input);
         return 1;
@@ -109,7 +109,7 @@ int main(int argc, char* argv[]) {
     size_t frame_length = 0;
 
     if (!decode_hex(input, frame, &frame_length)) {
-        fprintf(stderr, "Invalid or oversized hexadecimal packet.\\n");
+        fprintf(stderr, "Invalid or oversized hexadecimal packet.\n");
         free(frame);
         free(input);
         return 1;
@@ -117,12 +117,12 @@ int main(int argc, char* argv[]) {
 
     network_init(local_address);
 
-    printf("\\n=== C Packet Processing Engine ===\\n");
-    printf("Received frame: %zu bytes\\n", frame_length);
+    printf("\n=== C Packet Processing Engine ===\n");
+    printf("Received frame: %zu bytes\n", frame_length);
 
     process_frame(frame, frame_length);
 
-    printf("FRAME_SUBMITTED bytes=%zu\\n", frame_length);
+    printf("FRAME_SUBMITTED bytes=%zu\n", frame_length);
 
     free(frame);
     free(input);
